@@ -1,17 +1,20 @@
-// import React from "react";
+import { useState } from "react";
 
-const images = ()=>{return (
-    <>
-      <div className="flex item-start w-full items-center flex-wrap gap-4">
-        {/* Repeat this block for each instance of the component */}
-        <div className="flex-shrink-0 w-[300px] h-[400px] relative rounded-md overflow-hidden">
-          <img key="" src="" className="images" alt=""/>
+const CardSection = ({ images, onImageClick }) => {
+  return (
+    <div className="columns-2 md:columns-3 lg:columns-4 gap-4 px-4 mt-5">
+      {images.map((image) => (
+        <div key={image.id} className="mb-4 break-inside-avoid">
+          <img
+            src={image.urls.small}
+            alt={image.alt_description}
+            className="w-full rounded-lg cursor-pointer hover:opacity-80 transition-all"
+            onClick={() => onImageClick(image)}
+          />
         </div>
-        {/* Repeat this block for each instance of the component */}
-      </div>
-    </>
-  );}
-  
-export default images;
+      ))}
+    </div>
+  );
+};
 
-// export default CardSection;
+export default CardSection;
