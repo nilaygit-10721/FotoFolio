@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import axios from "axios";
-import Suggest from "./Suggestion"; // Ensure the correct import path
+// import Suggest from "./Suggestion";
+const suggestions = ["Food", "Nature", "Bikes", "Models"];
 
 const API_URL = "https://api.unsplash.com/search/photos";
 const IMAGE_PER_PAGE = 20;
@@ -14,25 +15,26 @@ function App() {
   const [selectedImage, setSelectedImage] = useState(null);
   const [relatedImages, setRelatedImages] = useState([]);
 
-  const fetchImages = useCallback(async () => {
-    try {
-      if (searchInput.current.value) {
-        setErrorMsg("");
-        const result = await axios.get(
-          `${API_URL}?query=${
-            searchInput.current.value
-          }&page=${page}&per_page=${IMAGE_PER_PAGE}&client_id=${
-            import.meta.env.VITE_API_KEY
-          }`
-        );
-        setImages(result.data.results);
-        setTotalPages(result.data.total_pages);
+  const fetchImages = useCallback(
+    async (query = searchInput.current.value) => {
+      try {
+        if (query.trim()) {
+          setErrorMsg("");
+          const result = await axios.get(
+            `${API_URL}?query=${query}&page=${page}&per_page=${IMAGE_PER_PAGE}&client_id=${
+              import.meta.env.VITE_API_KEY
+            }`
+          );
+          setImages(result.data.results);
+          setTotalPages(result.data.total_pages);
+        }
+      } catch (error) {
+        setErrorMsg("Error fetching images. Try again later");
+        console.log(error);
       }
-    } catch (error) {
-      setErrorMsg("Error fetching images. Try again later");
-      console.log(error);
-    }
-  }, [page]);
+    },
+    [page]
+  );
 
   useEffect(() => {
     fetchImages();
@@ -45,9 +47,9 @@ function App() {
   };
 
   const handleSelection = (selection) => {
-    searchInput.current.value = selection; // Update the search input value
-    fetchImages(); // Trigger a new search
-    setPage(1); // Reset to page 1
+    searchInput.current.value = selection;
+    setPage(1);
+    fetchImages(selection); // Pass selected query directly
   };
 
   const openModal = async (image) => {
@@ -86,9 +88,19 @@ function App() {
         >
           Search
         </button>
-        <Suggest onSelect={handleSelection} /> {/* Pass handleSelection */}
       </div>
-
+      <div className="flex space-x-2 items-center justify-center mt-5">
+        {suggestions.map((suggestion) => (
+          <button
+            key={suggestion}
+            type="button"
+            className="rounded-md bg-pink-200 px-3 py-2 text-sm font-semibold text-black shadow-sm hover:bg-sky-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black"
+            onClick={() => handleSelection(suggestion)} // Changed from onSelect to handleSelection
+          >
+            {suggestion}
+          </button>
+        ))}
+      </div>
       <div className="flex flex-wrap gap-4 justify-center mt-10">
         {images.map((image) => (
           <img
@@ -101,7 +113,6 @@ function App() {
           />
         ))}
       </div>
-
       {selectedImage && (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-5">
           <div className="bg-white p-5 rounded-lg w-full max-w-2xl relative">
