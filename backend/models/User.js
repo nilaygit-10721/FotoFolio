@@ -34,8 +34,8 @@ const UserSchema = new mongoose.Schema({
     maxlength: [150, "Bio cannot be more than 150 characters"],
     default: "",
   },
-  followers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
-  following: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+  followers: [{ type: mongoose.Schema.Types.ObjectId, ref: "user_foto" }],
+  following: [{ type: mongoose.Schema.Types.ObjectId, ref: "user_foto" }],
   createdAt: {
     type: Date,
     default: Date.now,
@@ -61,6 +61,32 @@ UserSchema.methods.getSignedJwtToken = function () {
   return jwt.sign({ id: this._id }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRE,
   });
+};
+
+// Follow a user
+UserSchema.methods.follow = async function (userId) {
+  if (this._id.toString() === userId.toString()) {
+    throw new Error("You cannot follow yourself");
+  }
+
+  if (this.following.includes(userId)) {
+    throw new Error("You are already following this user");
+  }
+
+  this.following.push(userId);
+  await this.save();
+};
+
+// Unfollow a user
+UserSchema.methods.unfollow = async function (userId) {
+  if (!this.following.includes(userId)) {
+    throw new Error("You are not following this user");
+  }
+
+  this.following = this.following.filter(
+    (id) => id.toString() !== userId.toString()
+  );
+  await this.save();
 };
 
 module.exports = mongoose.model("user_foto", UserSchema);
