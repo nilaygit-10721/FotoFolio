@@ -162,3 +162,99 @@ exports.getPopularPhotos = async (req, res, next) => {
     next(err);
   }
 };
+
+exports.getPhotoById = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return next(new ErrorResponse("Photo ID is required", 400));
+    }
+
+    // First try to find by MongoDB ID
+    if (id.match(/^[0-9a-fA-F]{24}$/)) {
+      const photo = await Photo.findById(id)
+        .populate("likes", "username avatar")
+        .populate("saves", "username avatar");
+
+      if (photo) {
+        return res.status(200).json({
+          success: true,
+          data: photo,
+        });
+      }
+    }
+
+    // If not found by MongoDB ID, try by unsplashId
+    let photo = await Photo.findOne({ unsplashId: id })
+      .populate("likes", "username avatar")
+      .populate("saves", "username avatar");
+
+    // If still not found, fetch from Unsplash
+    if (!photo) {
+      try {
+        const response = await axios.get(
+          `https://api.unsplash.com/photos/${id}`,
+          {
+            headers: {
+              Authorization: `Client-ID ${process.env.UNSPLASH_ACCESS_KEY}`,
+            },
+          }
+        );
+
+        const unsplashPhoto = response.data;
+
+        // Create and save the new photo
+        photo = await Photo.create({
+          unsplashId: unsplashPhoto.id,
+          imageUrl: unsplashPhoto.urls.regular,
+          thumbUrl: unsplashPhoto.urls.thumb,
+          photographer: unsplashPhoto.user.name,
+          photographerUrl: unsplashPhoto.user.links.html,
+          description:
+            unsplashPhoto.description || unsplashPhoto.alt_description,
+          tags: unsplashPhoto.tags
+            ? unsplashPhoto.tags.map((tag) => tag.title)
+            : [],
+        });
+
+        return res.status(200).json({
+          success: true,
+          data: photo,
+        });
+      } catch (unsplashError) {
+        if (unsplashError.response?.status === 404) {
+          return next(
+            new ErrorResponse(`Resource not found with id of ${id}`, 404)
+          );
+        }
+        return next(new ErrorResponse("Unsplash API error", 502));
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      data: photo,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+// @desc    Get photo comments
+// @route   GET /api/photos/:id/comments
+// @access  Public
+exports.getPhotoComments = async (req, res, next) => {
+  try {
+    const comments = await Comment.find({ photo: req.params.id })
+      .populate("user", "username avatar")
+      .sort("-createdAt");
+
+    res.status(200).json({
+      success: true,
+      count: comments.length,
+      data: comments,
+    });
+  } catch (err) {
+    next(err);
+  }
+};

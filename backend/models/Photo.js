@@ -25,13 +25,13 @@ const PhotoSchema = new mongoose.Schema({
   likes: [
     {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      ref: "user_foto",
     },
   ],
   saves: [
     {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      ref: "user_foto",
     },
   ],
   tags: [String],

@@ -1,35 +1,42 @@
-import { CssBaseline, ThemeProvider, createTheme } from "@mui/material";
+import React from "react";
 import { Routes, Route } from "react-router-dom";
+import ProtectedRoute from "./components/ProtectedRoute";
 import Layout from "./components/layout/Layout";
 import Home from "./pages/Home";
 import Login from "./features/auth/Login";
 import Register from "./features/auth/Register";
+import Dashboard from "./pages/Dashboard";
+import Explore from "./pages/Explore";
 import NotFound from "./pages/NotFound";
-
-const theme = createTheme({
-  palette: {
-    primary: {
-      main: "#1976d2",
-    },
-    secondary: {
-      main: "#dc004e",
-    },
-  },
-});
+import Boards from "./pages/Boards";
+import CreateBoard from "./pages/CreateBoard";
+import Upload from "./pages/Upload";
+import UserProfile from "./pages/UserProfile";
+import PhotoDetail from "./pages/PhotoDetail";
 
 function App() {
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <Routes>
-        <Route path="/" element={<Layout />}>
-          <Route index element={<Home />} />
-          <Route path="login" element={<Login />} />
-          <Route path="register" element={<Register />} />
-          <Route path="*" element={<NotFound />} />
+    <Routes>
+      <Route path="/" element={<Layout />}>
+        <Route index element={<Home />} />
+        <Route path="login" element={<Login />} />
+        <Route path="register" element={<Register />} />
+        <Route path="explore" element={<Explore />} />
+        // Add these routes
+        <Route path="users/:username" element={<UserProfile />} />
+        <Route path="photos/:id" element={<PhotoDetail />} />
+        {/* Protected Routes */}
+        <Route element={<ProtectedRoute />}>
+          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="upload" element={<Upload />} />
+          // Add these routes inside the ProtectedRoute component
+          <Route path="boards" element={<Boards />} />
+          {/* <Route path="boards/:id" element={<BoardDetails />} /> */}
+          <Route path="create-board" element={<CreateBoard />} />
         </Route>
-      </Routes>
-    </ThemeProvider>
+        <Route path="*" element={<NotFound />} />
+      </Route>
+    </Routes>
   );
 }
 
