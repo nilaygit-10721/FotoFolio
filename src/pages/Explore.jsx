@@ -17,7 +17,7 @@ const Explore = () => {
   );
 
   const [searchParams, setSearchParams] = useState({
-    query: "google",
+    query: "cars",
     sortBy: "popular",
     orientation: "all",
     color: "any",
@@ -65,9 +65,6 @@ const Explore = () => {
 
   // In Explore.jsx
   const handlePhotoClick = (photo) => {
-    // Debugging: Log the photo object to verify structure
-    console.log("Photo object:", photo);
-
     // Ensure we have a valid ID before navigating
     const photoId = photo?.unsplashId || photo?._id;
     console.log(photoId);

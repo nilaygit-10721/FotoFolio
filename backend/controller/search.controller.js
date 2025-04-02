@@ -1,6 +1,7 @@
 const Photo = require("../models/Photo");
 const Board = require("../models/Board");
 const User = require("../models/User");
+const mongoose = require("mongoose");
 const ErrorResponse = require("../utils/errorResponse");
 
 // @desc    Global search
@@ -46,9 +47,11 @@ exports.globalSearch = async (req, res, next) => {
         .populate("user", "username avatar"),
 
       // User search (by username)
-      User.find({
-        username: { $regex: query, $options: "i" },
-      })
+      mongoose
+        .model("user_foto")
+        .find({
+          username: { $regex: query, $options: "i" },
+        })
         .limit(10)
         .select("username avatar bio followers following"),
     ]);
@@ -128,6 +131,41 @@ exports.photoSearch = async (req, res, next) => {
   }
 };
 
+// @desc    Get specific user profile
+// @route   GET /api/search/users/:username
+// @access  Public
+exports.getUserByUsername = async (req, res, next) => {
+  try {
+    const user = await User.findOne({ username: req.params.username })
+      .select("-password")
+      .populate("followers", "username avatar")
+      .populate("following", "username avatar");
+
+    if (!user) {
+      return next(new ErrorResponse("User not found", 404));
+    }
+
+    // Get counts
+    const photosCount = await Photo.countDocuments({ user: user._id });
+    const boardsCount = await Board.countDocuments({ user: user._id });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        ...user.toObject(),
+        stats: {
+          photosCount,
+          boardsCount,
+          followersCount: user.followers.length,
+          followingCount: user.following.length,
+        },
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 // @desc    Advanced user search
 // @route   GET /api/search/users
 // @access  Public
@@ -144,15 +182,32 @@ exports.userSearch = async (req, res, next) => {
       );
     }
 
-    // Execute query with pagination
     const users = await User.find({
       username: { $regex: query, $options: "i" },
     })
       .skip((page - 1) * limit)
       .limit(parseInt(limit))
-      .select("username avatar bio followers following createdAt");
+      .select("username avatar bio createdAt")
+      .lean();
 
-    // Get total count for pagination
+    // Add counts for each user
+    const usersWithCounts = await Promise.all(
+      users.map(async (user) => {
+        const followersCount = await User.countDocuments({
+          followers: user._id,
+        });
+        const followingCount = user.following?.length || 0;
+        const photosCount = await Photo.countDocuments({ user: user._id });
+
+        return {
+          ...user,
+          followersCount,
+          followingCount,
+          photosCount,
+        };
+      })
+    );
+
     const total = await User.countDocuments({
       username: { $regex: query, $options: "i" },
     });
@@ -163,7 +218,7 @@ exports.userSearch = async (req, res, next) => {
       total,
       pages: Math.ceil(total / limit),
       currentPage: parseInt(page),
-      data: users,
+      data: usersWithCounts,
     });
   } catch (err) {
     next(err);

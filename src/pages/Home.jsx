@@ -1,9 +1,18 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Link } from "react-router-dom";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
+import { searchPhotos } from "../store/slices/photoSlice";
+import PhotoCard from "../components/ui/PhotoCard";
 
 const Home = () => {
   const { isAuthenticated } = useSelector((state) => state.auth);
+  const { photos, status } = useSelector((state) => state.photos);
+  const dispatch = useDispatch();
+
+  useEffect(() => {
+    // Fetch popular photos when component mounts
+    dispatch(searchPhotos({ query: "random", sortBy: "popular", perPage: 8 }));
+  }, [dispatch]);
 
   return (
     <div className="min-h-screen">
@@ -85,18 +94,26 @@ const Home = () => {
           <h2 className="text-3xl font-bold text-center mb-12">
             Popular Photos
           </h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {Array.from({ length: 8 }).map((_, index) => (
-              <div
-                key={index}
-                className="aspect-square bg-gray-200 rounded-lg overflow-hidden hover:scale-105 transition duration-300"
-              >
-                <div className="w-full h-full flex items-center justify-center text-gray-400">
-                  Photo {index + 1}
-                </div>
-              </div>
-            ))}
-          </div>
+          {status === "loading" ? (
+            <div className="flex justify-center">
+              <div className="loader">Loading...</div>
+            </div>
+          ) : status === "failed" ? (
+            <div className="text-center text-red-500">
+              Failed to load photos. Please try again later.
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {photos.map((photo) => (
+                <PhotoCard
+                  key={photo.unsplashId}
+                  photo={photo}
+                  showUser={true}
+                  showActions={isAuthenticated}
+                />
+              ))}
+            </div>
+          )}
           <div className="text-center mt-8">
             <Link
               to={isAuthenticated ? "/explore" : "/register"}

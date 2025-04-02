@@ -3,11 +3,12 @@ import { useFormik } from "formik";
 import * as Yup from "yup";
 import { useDispatch, useSelector } from "react-redux";
 import { loginUser } from "../../store/slices/authSlice";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 const Login = () => {
   const dispatch = useDispatch();
-  const { status, error } = useSelector((state) => state.auth);
+  const navigate = useNavigate();
+  const { status, error, isAuthenticated } = useSelector((state) => state.auth);
 
   const formik = useFormik({
     initialValues: {
@@ -20,10 +21,18 @@ const Login = () => {
         .required("Email is required"),
       password: Yup.string().required("Password is required"),
     }),
-    onSubmit: (values) => {
-      dispatch(loginUser(values));
+    onSubmit: async (values) => {
+      const resultAction = await dispatch(loginUser(values));
+      if (loginUser.fulfilled.match(resultAction)) {
+        navigate("/explore");
+      }
     },
   });
+
+  // Redirect if already authenticated
+  // if (isAuthenticated) {
+  //   console.log(auth);
+  // }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -61,7 +70,7 @@ const Login = () => {
                 </svg>
               </div>
               <div className="ml-3">
-                <p className="text-sm text-red-700">{error.message}</p>
+                <p className="text-sm text-red-700">{error}</p>
               </div>
             </div>
           </div>

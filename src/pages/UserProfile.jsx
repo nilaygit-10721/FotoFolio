@@ -1,26 +1,40 @@
 import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useParams, Link } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import {
   fetchUserProfile,
   followUser,
   unfollowUser,
+  resetUserState,
 } from "../store/slices/userSlice";
-import PhotoCard from "../components/ui/PhotoCard";
-import BoardCard from "../components/BoardCard";
+import PhotoGrid from "../components/ui/PhotoGrid";
+import BoardGrid from "../components/ui/BoardGrid";
+import { Button, Loader, ErrorMessage, Tabs } from "../components/ui/Button";
 
-const UserProfile = () => {
+const UserProfilePage = () => {
   const { username } = useParams();
   const dispatch = useDispatch();
-  const { profile, status, error } = useSelector((state) => state.user);
-  const { user: currentUser } = useSelector((state) => state.auth);
-  const [activeTab, setActiveTab] = useState("photos");
+  const navigate = useNavigate();
+  const { profile, status, followStatus, error } = useSelector(
+    (state) => state.user
+  );
+  const { user: currentUser, isAuthenticated } = useSelector(
+    (state) => state.auth
+  );
+  const [activeTab, setActiveTab] = React.useState("photos");
 
   useEffect(() => {
     dispatch(fetchUserProfile(username));
-  }, [dispatch, username]);
+    return () => {
+      dispatch(resetUserState());
+    };
+  }, [username, dispatch]);
 
   const handleFollow = () => {
+    if (!isAuthenticated) {
+      navigate("/login");
+      return;
+    }
     if (profile.isFollowing) {
       dispatch(unfollowUser(profile._id));
     } else {
@@ -30,18 +44,22 @@ const UserProfile = () => {
 
   if (status === "loading") {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      <div className="flex justify-center py-12">
+        <Loader size="lg" />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="bg-red-50 border-l-4 border-red-500 p-4 max-w-md">
-          <p className="text-sm text-red-700">{error.message}</p>
-        </div>
+      <div className="flex flex-col items-center justify-center py-12">
+        <ErrorMessage message={error} />
+        <button
+          onClick={() => navigate(-1)}
+          className="mt-4 px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300"
+        >
+          Go Back
+        </button>
       </div>
     );
   }
@@ -51,184 +69,108 @@ const UserProfile = () => {
   const isCurrentUser = currentUser && currentUser._id === profile._id;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="container mx-auto px-4 py-8 max-w-6xl">
       {/* Profile Header */}
-      <div className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex flex-col md:flex-row items-start md:items-center space-y-6 md:space-y-0 md:space-x-6">
-            <div className="flex-shrink-0">
-              <div className="h-24 w-24 rounded-full bg-gray-200 overflow-hidden">
-                {profile.avatar ? (
-                  <img
-                    src={profile.avatar}
-                    alt={profile.username}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <div className="h-full w-full flex items-center justify-center text-gray-400 text-2xl font-bold">
-                    {profile.username.charAt(0).toUpperCase()}
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className="flex-1 min-w-0">
-              <h1 className="text-2xl font-bold text-gray-900">
-                {profile.username}
-              </h1>
+      <div className="flex flex-col md:flex-row gap-8 mb-8">
+        <div className="flex-shrink-0">
+          <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-lg">
+            <img
+              src={
+                profile.avatar ||
+                `https://ui-avatars.com/api/?name=${profile.username}`
+              }
+              alt={profile.username}
+              className="w-full h-full object-cover"
+            />
+          </div>
+        </div>
+
+        <div className="flex-1">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold">{profile.username}</h1>
               {profile.bio && (
-                <p className="mt-1 text-gray-600">{profile.bio}</p>
+                <p className="text-gray-600 mt-2">{profile.bio}</p>
               )}
-              <div className="mt-3 flex space-x-5">
-                <span className="text-sm text-gray-500">
-                  <span className="font-semibold text-gray-900">
-                    {profile.followersCount}
-                  </span>{" "}
-                  Followers
-                </span>
-                <span className="text-sm text-gray-500">
-                  <span className="font-semibold text-gray-900">
-                    {profile.followingCount}
-                  </span>{" "}
-                  Following
-                </span>
-                <span className="text-sm text-gray-500">
-                  <span className="font-semibold text-gray-900">
-                    {profile.photosCount}
-                  </span>{" "}
-                  Photos
-                </span>
-              </div>
             </div>
+
             {!isCurrentUser && (
-              <div className="flex-shrink-0">
-                <button
-                  onClick={handleFollow}
-                  className={`px-4 py-2 rounded-md text-sm font-medium ${
-                    profile.isFollowing
-                      ? "bg-white text-gray-800 border border-gray-300 hover:bg-gray-50"
-                      : "bg-blue-600 text-white hover:bg-blue-700"
-                  }`}
-                >
-                  {profile.isFollowing ? "Following" : "Follow"}
-                </button>
-              </div>
+              <Button
+                onClick={handleFollow}
+                loading={followStatus === "loading"}
+                variant={profile.isFollowing ? "outline" : "primary"}
+                className="w-full md:w-auto"
+              >
+                {profile.isFollowing ? "Following" : "Follow"}
+              </Button>
             )}
+          </div>
+
+          <div className="flex gap-6 mt-6">
+            <div className="text-center">
+              <div className="font-bold text-lg">
+                {profile.stats?.photosCount || 0}
+              </div>
+              <div className="text-gray-500">Photos</div>
+            </div>
+            <div className="text-center">
+              <div className="font-bold text-lg">
+                {profile.stats?.followersCount || 0}
+              </div>
+              <div className="text-gray-500">Followers</div>
+            </div>
+            <div className="text-center">
+              <div className="font-bold text-lg">
+                {profile.stats?.followingCount || 0}
+              </div>
+              <div className="text-gray-500">Following</div>
+            </div>
+            <div className="text-center">
+              <div className="font-bold text-lg">
+                {profile.stats?.boardsCount || 0}
+              </div>
+              <div className="text-gray-500">Boards</div>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8">
-            <button
-              onClick={() => setActiveTab("photos")}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === "photos"
-                  ? "border-blue-500 text-blue-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
-            >
-              Photos
-            </button>
-            <button
-              onClick={() => setActiveTab("boards")}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === "boards"
-                  ? "border-blue-500 text-blue-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
-            >
-              Boards
-            </button>
-            <button
-              onClick={() => setActiveTab("likes")}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === "likes"
-                  ? "border-blue-500 text-blue-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
-            >
-              Likes
-            </button>
-          </nav>
-        </div>
-      </div>
+      <Tabs
+        tabs={[
+          { id: "photos", label: "Photos" },
+          { id: "boards", label: "Boards" },
+          { id: "likes", label: "Likes" },
+        ]}
+        activeTab={activeTab}
+        onChange={setActiveTab}
+      />
 
       {/* Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="mt-8">
         {activeTab === "photos" && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {profile.photos.length > 0 ? (
-              profile.photos.map((photo) => (
-                <PhotoCard key={photo._id} photo={photo} />
-              ))
-            ) : (
-              <div className="col-span-full text-center py-12">
-                <p className="text-gray-500">
-                  {isCurrentUser
-                    ? "You haven't uploaded any photos yet"
-                    : "This user hasn't uploaded any photos yet"}
-                </p>
-                {isCurrentUser && (
-                  <Link
-                    to="/upload"
-                    className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700"
-                  >
-                    Upload Photos
-                  </Link>
-                )}
-              </div>
-            )}
-          </div>
+          <PhotoGrid
+            photos={profile.photos || []}
+            emptyMessage="No photos yet"
+          />
         )}
 
         {activeTab === "boards" && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {profile.boards.length > 0 ? (
-              profile.boards.map((board) => (
-                <BoardCard key={board._id} board={board} />
-              ))
-            ) : (
-              <div className="col-span-full text-center py-12">
-                <p className="text-gray-500">
-                  {isCurrentUser
-                    ? "You haven't created any boards yet"
-                    : "This user hasn't created any boards yet"}
-                </p>
-                {isCurrentUser && (
-                  <Link
-                    to="/create-board"
-                    className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700"
-                  >
-                    Create Board
-                  </Link>
-                )}
-              </div>
-            )}
-          </div>
+          <BoardGrid
+            boards={profile.boards || []}
+            emptyMessage="No boards yet"
+          />
         )}
 
         {activeTab === "likes" && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {profile.likedPhotos.length > 0 ? (
-              profile.likedPhotos.map((photo) => (
-                <PhotoCard key={photo._id} photo={photo} />
-              ))
-            ) : (
-              <div className="col-span-full text-center py-12">
-                <p className="text-gray-500">
-                  {isCurrentUser
-                    ? "You haven't liked any photos yet"
-                    : "This user hasn't liked any photos yet"}
-                </p>
-              </div>
-            )}
-          </div>
+          <PhotoGrid
+            photos={profile.likedPhotos || []}
+            emptyMessage="No liked photos yet"
+          />
         )}
       </div>
     </div>
   );
 };
 
-export default UserProfile;
+export default UserProfilePage;
