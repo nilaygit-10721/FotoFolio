@@ -8,7 +8,7 @@ const {
   getPhotoById,
   getPhotoComments,
 } = require("../controller/photo.controller");
-const { protect } = require("../middleware/auth");
+const protect = require("../middleware/auth.middleware");
 
 router.get("/search", searchPhotos);
 router.get("/popular", getPopularPhotos);

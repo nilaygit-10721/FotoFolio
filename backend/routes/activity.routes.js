@@ -4,7 +4,7 @@ const {
   getMyActivity,
   getFollowingActivity,
 } = require("../controller/activity.controller");
-const { protect } = require("../middleware/auth");
+const protect = require("../middleware/auth.middleware");
 
 router.get("/me", protect, getMyActivity);
 router.get("/following", protect, getFollowingActivity);

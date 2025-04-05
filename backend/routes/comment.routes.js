@@ -8,7 +8,7 @@ const {
   unlikeComment,
   deleteComment,
 } = require("../controller/comment.controller");
-const { protect } = require("../middleware/auth");
+const protect = require("../middleware/auth.middleware");
 
 router.get("/photos/:photoId/comments", getComments);
 router.post("/photos/:photoId/comments", protect, addComment);

@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
-const { signup, login } = require("../controller/auth.controller");
+const { signup, login, verifyToken } = require("../controller/auth.controller");
+const authMiddleware = require("../middleware/auth.middleware");
 
 /**
  * @swagger
@@ -72,5 +73,6 @@ router.post("/signup", signup);
  *         description: Invalid credentials
  */
 router.post("/login", login);
+router.get("/verify", authMiddleware, verifyToken);
 
 module.exports = router;

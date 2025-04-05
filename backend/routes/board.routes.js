@@ -9,7 +9,7 @@ const {
   addPhotoToBoard,
   removePhotoFromBoard,
 } = require("../controller/board.controller");
-const { protect } = require("../middleware/auth");
+const protect = require("../middleware/auth.middleware");
 
 router.route("/").get(protect, getUserBoards).post(protect, createBoard);
 

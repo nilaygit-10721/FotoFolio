@@ -61,6 +61,8 @@ app.use("/api/activity", require("./routes/activity.routes"));
 app.use("/api", require("./routes/comment.routes"));
 app.use("/api/notifications", require("./routes/notification.routes"));
 app.use("/api/search", require("./routes/search.routes"));
+app.use("/api/users", require("./routes/stats.routes"));
+
 setupSwagger(app);
 // Basic route for testing
 app.get("/", (req, res) => {
