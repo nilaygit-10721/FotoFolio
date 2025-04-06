@@ -20,16 +20,16 @@ export const searchPhotos = createAsyncThunk(
 
 export const uploadPhoto = createAsyncThunk(
   "photos/upload",
-  async (photoData, { rejectWithValue }) => {
+  async (formData, { rejectWithValue }) => {
     try {
-      const response = await api.post("/photos/upload", photoData, {
+      const response = await api.post("/photos", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
       });
       return response.data;
     } catch (err) {
-      return rejectWithValue(err.response?.data || err.message);
+      return rejectWithValue(err.response.data);
     }
   }
 );
@@ -91,6 +91,10 @@ const photoSlice = createSlice({
     clearPhotoError: (state) => {
       state.error = null;
       state.currentPhoto.error = null;
+    },
+    resetUploadStatus: (state) => {
+      state.status = "idle";
+      state.error = null;
     },
   },
   extraReducers: (builder) => {
@@ -173,5 +177,6 @@ const photoSlice = createSlice({
   },
 });
 
-export const { resetPhotoState, clearPhotoError } = photoSlice.actions;
+export const { resetPhotoState, clearPhotoError, resetUploadStatus } =
+  photoSlice.actions;
 export default photoSlice.reducer;

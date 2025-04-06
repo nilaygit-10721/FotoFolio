@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { uploadPhoto } from "../store/slices/photoSlice";
+import { uploadPhoto, resetUploadStatus } from "../store/slices/photoSlice";
 
 const Upload = () => {
   const dispatch = useDispatch();
@@ -9,14 +9,39 @@ const Upload = () => {
   const { status, error } = useSelector((state) => state.photos);
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
+  const [isUnsplashPhoto, setIsUnsplashPhoto] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
     tags: "",
+    photographer: "",
+    photographerUrl: "",
+    unsplashId: "",
   });
+
+  // Reset upload status when component unmounts
+  useEffect(() => {
+    return () => {
+      dispatch(resetUploadStatus());
+    };
+  }, [dispatch]);
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
+    if (!selectedFile) return;
+
+    // Validate file type
+    if (!selectedFile.type.startsWith("image/")) {
+      alert("Please select an image file (JPEG, PNG, GIF)");
+      return;
+    }
+
+    // Validate file size (10MB max)
+    if (selectedFile.size > 10 * 1024 * 1024) {
+      alert("Image size must be less than 10MB");
+      return;
+    }
+
     setFile(selectedFile);
 
     // Create preview
@@ -37,19 +62,43 @@ const Upload = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    const tagsArray = formData.tags.split(",").map((tag) => tag.trim());
+    if (!file && !isUnsplashPhoto) {
+      alert("Please select a photo to upload or provide Unsplash details");
+      return;
+    }
+
+    const tagsArray = formData.tags
+      .split(",")
+      .map((tag) => tag.trim())
+      .filter((tag) => tag);
 
     const photoData = new FormData();
-    photoData.append("image", file);
+
+    if (!isUnsplashPhoto) {
+      photoData.append("image", file);
+    } else {
+      // For Unsplash photos, we expect the URL to be provided
+      photoData.append("imageUrl", formData.imageUrl);
+      photoData.append("thumbUrl", formData.thumbUrl || formData.imageUrl);
+      photoData.append("photographer", formData.photographer);
+      photoData.append("photographerUrl", formData.photographerUrl);
+      photoData.append("unsplashId", formData.unsplashId);
+    }
+
     photoData.append("title", formData.title);
     photoData.append("description", formData.description);
     photoData.append("tags", JSON.stringify(tagsArray));
+    photoData.append(
+      "sourceType",
+      isUnsplashPhoto ? "unsplash" : "user_upload"
+    );
 
-    dispatch(uploadPhoto(photoData)).then(() => {
-      navigate("/dashboard");
+    dispatch(uploadPhoto(photoData)).then((action) => {
+      if (action.type.endsWith("fulfilled")) {
+        navigate("/dashboard");
+      }
     });
   };
-
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">

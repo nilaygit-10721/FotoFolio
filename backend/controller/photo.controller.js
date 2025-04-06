@@ -258,3 +258,42 @@ exports.getPhotoComments = async (req, res, next) => {
     next(err);
   }
 };
+
+// @desc    Upload a photo
+// @route   POST /api/photos
+// @access  Private
+exports.uploadPhoto = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return next(new ErrorResponse("Please upload an image file", 400));
+    }
+
+    const { title, description } = req.body;
+    let tags = [];
+
+    try {
+      tags = JSON.parse(req.body.tags);
+    } catch (e) {
+      tags = [];
+    }
+
+    // Create relative URL path
+    const imageUrl = `/uploads/${req.file.filename}`;
+
+    const photo = await Photo.create({
+      user: req.user.id,
+      imageUrl,
+      title,
+      description,
+      tags,
+    });
+
+    res.status(201).json({
+      success: true,
+      data: photo,
+    });
+  } catch (err) {
+    console.error("Upload error:", err);
+    next(err);
+  }
+};

@@ -9,6 +9,7 @@ const { apiLimiter, authLimiter } = require("./middleware/rateLimiter");
 const mongoSanitize = require("express-mongo-sanitize");
 const xss = require("xss-clean");
 const setupSwagger = require("./config/swagger");
+const path = require("path");
 
 // Initialize Express app
 const app = express();
@@ -62,6 +63,13 @@ app.use("/api", require("./routes/comment.routes"));
 app.use("/api/notifications", require("./routes/notification.routes"));
 app.use("/api/search", require("./routes/search.routes"));
 app.use("/api/users", require("./routes/stats.routes"));
+app.use(
+  "/api/photos",
+  express.static(
+    path.join(__dirname, "public/uploads"),
+    require("./routes/photo.routes")
+  )
+);
 
 setupSwagger(app);
 // Basic route for testing
