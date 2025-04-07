@@ -134,7 +134,7 @@ const photoSlice = createSlice({
       })
       .addCase(fetchPhotoById.fulfilled, (state, action) => {
         state.currentPhoto.status = "succeeded";
-        state.currentPhoto.photo = action.payload;
+        state.currentPhoto.photo = action.payload; // This should be { data: {...} }
         state.currentPhoto.error = null;
       })
       .addCase(fetchPhotoById.rejected, (state, action) => {

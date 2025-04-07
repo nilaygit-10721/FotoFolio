@@ -7,9 +7,10 @@ const Upload = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { status, error } = useSelector((state) => state.photos);
+  const { user } = useSelector((state) => state.auth);
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
-  const [isUnsplashPhoto, setIsUnsplashPhoto] = useState(false);
+  const [sourceType, setSourceType] = useState("user_upload"); // 'user_upload' or 'unsplash'
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -17,6 +18,8 @@ const Upload = () => {
     photographer: "",
     photographerUrl: "",
     unsplashId: "",
+    imageUrl: "",
+    thumbUrl: "",
   });
 
   // Reset upload status when component unmounts
@@ -59,11 +62,22 @@ const Upload = () => {
     });
   };
 
+  const handleSourceTypeChange = (type) => {
+    setSourceType(type);
+    setFile(null);
+    setPreview(null);
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    if (!file && !isUnsplashPhoto) {
-      alert("Please select a photo to upload or provide Unsplash details");
+    if (sourceType === "user_upload" && !file) {
+      alert("Please select a photo to upload");
+      return;
+    }
+
+    if (sourceType === "unsplash" && !formData.imageUrl) {
+      alert("Please provide an image URL for Unsplash photo");
       return;
     }
 
@@ -73,25 +87,24 @@ const Upload = () => {
       .filter((tag) => tag);
 
     const photoData = new FormData();
+    photoData.append("sourceType", sourceType);
+    photoData.append("title", formData.title);
+    photoData.append("description", formData.description);
+    photoData.append("tags", JSON.stringify(tagsArray));
 
-    if (!isUnsplashPhoto) {
+    if (sourceType === "user_upload") {
       photoData.append("image", file);
     } else {
-      // For Unsplash photos, we expect the URL to be provided
+      // For Unsplash photos
       photoData.append("imageUrl", formData.imageUrl);
       photoData.append("thumbUrl", formData.thumbUrl || formData.imageUrl);
       photoData.append("photographer", formData.photographer);
       photoData.append("photographerUrl", formData.photographerUrl);
-      photoData.append("unsplashId", formData.unsplashId);
+      photoData.append(
+        "unsplashId",
+        formData.unsplashId || Date.now().toString()
+      );
     }
-
-    photoData.append("title", formData.title);
-    photoData.append("description", formData.description);
-    photoData.append("tags", JSON.stringify(tagsArray));
-    photoData.append(
-      "sourceType",
-      isUnsplashPhoto ? "unsplash" : "user_upload"
-    );
 
     dispatch(uploadPhoto(photoData)).then((action) => {
       if (action.type.endsWith("fulfilled")) {
@@ -99,13 +112,42 @@ const Upload = () => {
       }
     });
   };
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="bg-white shadow rounded-lg p-6">
           <h1 className="text-2xl font-bold text-gray-900 mb-6">
-            Upload Photo
+            {sourceType === "user_upload"
+              ? "Upload Photo"
+              : "Add Unsplash Photo"}
           </h1>
+
+          {/* Source Type Toggle */}
+          <div className="flex mb-6">
+            <button
+              type="button"
+              onClick={() => handleSourceTypeChange("user_upload")}
+              className={`flex-1 py-2 px-4 border ${
+                sourceType === "user_upload"
+                  ? "bg-blue-500 text-white border-blue-500"
+                  : "bg-white text-gray-700 border-gray-300"
+              }`}
+            >
+              Upload Your Photo
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSourceTypeChange("unsplash")}
+              className={`flex-1 py-2 px-4 border ${
+                sourceType === "unsplash"
+                  ? "bg-blue-500 text-white border-blue-500"
+                  : "bg-white text-gray-700 border-gray-300"
+              }`}
+            >
+              Add From Unsplash
+            </button>
+          </div>
 
           {error && (
             <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6">
@@ -125,16 +167,19 @@ const Upload = () => {
                   </svg>
                 </div>
                 <div className="ml-3">
-                  <p className="text-sm text-red-700">{error.message}</p>
+                  <p className="text-sm text-red-700">
+                    {typeof error === "string"
+                      ? error
+                      : error.message || "An error occurred"}
+                  </p>
                 </div>
               </div>
             </div>
           )}
 
           <form onSubmit={handleSubmit}>
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-              {/* Image Upload */}
-              <div>
+            {sourceType === "user_upload" ? (
+              <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Photo
                 </label>
@@ -177,7 +222,7 @@ const Upload = () => {
                           className="sr-only"
                           accept="image/*"
                           onChange={handleFileChange}
-                          required
+                          required={sourceType === "user_upload"}
                         />
                       </label>
                       <p className="pl-1">or drag and drop</p>
@@ -188,61 +233,150 @@ const Upload = () => {
                   </div>
                 </div>
               </div>
-
-              {/* Form Fields */}
-              <div className="space-y-4">
+            ) : (
+              <div className="space-y-4 mb-6">
                 <div>
                   <label
-                    htmlFor="title"
+                    htmlFor="imageUrl"
                     className="block text-sm font-medium text-gray-700"
                   >
-                    Title
+                    Image URL
+                  </label>
+                  <input
+                    type="url"
+                    name="imageUrl"
+                    id="imageUrl"
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    value={formData.imageUrl}
+                    onChange={handleChange}
+                    required
+                    placeholder="https://example.com/image.jpg"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="thumbUrl"
+                    className="block text-sm font-medium text-gray-700"
+                  >
+                    Thumbnail URL (optional)
+                  </label>
+                  <input
+                    type="url"
+                    name="thumbUrl"
+                    id="thumbUrl"
+                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    value={formData.thumbUrl}
+                    onChange={handleChange}
+                    placeholder="https://example.com/thumb.jpg"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="photographer"
+                    className="block text-sm font-medium text-gray-700"
+                  >
+                    Photographer Name
                   </label>
                   <input
                     type="text"
-                    name="title"
-                    id="title"
+                    name="photographer"
+                    id="photographer"
                     className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                    value={formData.title}
+                    value={formData.photographer}
                     onChange={handleChange}
                     required
                   />
                 </div>
-
                 <div>
                   <label
-                    htmlFor="description"
+                    htmlFor="photographerUrl"
                     className="block text-sm font-medium text-gray-700"
                   >
-                    Description
+                    Photographer Profile URL
                   </label>
-                  <textarea
-                    id="description"
-                    name="description"
-                    rows={3}
+                  <input
+                    type="url"
+                    name="photographerUrl"
+                    id="photographerUrl"
                     className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                    value={formData.description}
+                    value={formData.photographerUrl}
                     onChange={handleChange}
+                    required
+                    placeholder="https://unsplash.com/@username"
                   />
                 </div>
-
                 <div>
                   <label
-                    htmlFor="tags"
+                    htmlFor="unsplashId"
                     className="block text-sm font-medium text-gray-700"
                   >
-                    Tags (comma separated)
+                    Unsplash ID (optional)
                   </label>
                   <input
                     type="text"
-                    name="tags"
-                    id="tags"
+                    name="unsplashId"
+                    id="unsplashId"
                     className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                    value={formData.tags}
+                    value={formData.unsplashId}
                     onChange={handleChange}
-                    placeholder="nature, landscape, sunset"
+                    placeholder="Leave blank to auto-generate"
                   />
                 </div>
+              </div>
+            )}
+
+            <div className="space-y-4">
+              <div>
+                <label
+                  htmlFor="title"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  Title
+                </label>
+                <input
+                  type="text"
+                  name="title"
+                  id="title"
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  value={formData.title}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="description"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  Description
+                </label>
+                <textarea
+                  id="description"
+                  name="description"
+                  rows={3}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  value={formData.description}
+                  onChange={handleChange}
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="tags"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  Tags (comma separated)
+                </label>
+                <input
+                  type="text"
+                  name="tags"
+                  id="tags"
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  value={formData.tags}
+                  onChange={handleChange}
+                  placeholder="nature, landscape, sunset"
+                />
               </div>
             </div>
 
@@ -256,9 +390,13 @@ const Upload = () => {
               </button>
               <button
                 type="submit"
-                disabled={status === "loading" || !file}
+                disabled={
+                  status === "loading" ||
+                  (sourceType === "user_upload" && !file) ||
+                  (sourceType === "unsplash" && !formData.imageUrl)
+                }
                 className={`ml-3 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white ${
-                  status === "loading" || !file
+                  status === "loading"
                     ? "bg-blue-400"
                     : "bg-blue-600 hover:bg-blue-700"
                 } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500`}
@@ -287,8 +425,10 @@ const Upload = () => {
                     </svg>
                     Uploading...
                   </>
-                ) : (
+                ) : sourceType === "user_upload" ? (
                   "Upload Photo"
+                ) : (
+                  "Add Photo"
                 )}
               </button>
             </div>

@@ -9,13 +9,12 @@ const PhotoDetail = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  // Corrected selector usage
-  const currentPhotoState = useSelector((state) => state.photos.currentPhoto);
-  const { status, error } = currentPhotoState;
-  const photo = currentPhotoState.photo?.data; // Access the nested data property
+  // Corrected selector to match the actual state structure
+  const { currentPhoto } = useSelector((state) => state.photos);
+  const { status, error, photo } = currentPhoto;
 
-  console.log("Current photo state:", currentPhotoState);
-  console.log("Photo data:", photo);
+  // The actual photo data is in photo.data (from backend response)
+  const photoData = photo?.data;
 
   useEffect(() => {
     if (!id) {
@@ -31,9 +30,9 @@ const PhotoDetail = () => {
   }, [id, dispatch, navigate]);
 
   const handleDownload = () => {
-    if (photo?.imageUrl) {
+    if (photoData?.imageUrl) {
       const link = document.createElement("a");
-      link.href = photo.imageUrl;
+      link.href = photoData.imageUrl;
       link.download = `photo-${id}.jpg`;
       document.body.appendChild(link);
       link.click();
@@ -49,13 +48,12 @@ const PhotoDetail = () => {
     return <ErrorPhotoDetail error={error} navigate={navigate} />;
   }
 
-  if (!photo) {
+  if (!photoData) {
     return <NoPhotoFound navigate={navigate} />;
   }
-
   return (
     <PhotoDetailView
-      photo={photo}
+      photo={photoData}
       id={id}
       handleDownload={handleDownload}
       navigate={navigate}

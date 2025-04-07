@@ -14,7 +14,7 @@ const PhotoSchema = new mongoose.Schema(
       required: function () {
         return this.sourceType === "unsplash";
       },
-      unique: true,
+      // unique: true,
       sparse: true, // Allows null values but enforces uniqueness for non-null
     },
 
@@ -47,23 +47,21 @@ const PhotoSchema = new mongoose.Schema(
     // User information
     user: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: function () {
-        return this.sourceType === "user_upload";
-      },
+      ref: "user_foto",
+      required: false,
     },
 
     // Engagement metrics
     likes: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
+        ref: "user_foto",
       },
     ],
     saves: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
+        ref: "user_foto",
       },
     ],
 
@@ -107,7 +105,7 @@ PhotoSchema.virtual("saveCount").get(function () {
 });
 
 // Indexes for performance
-PhotoSchema.index({ unsplashId: 1 });
+PhotoSchema.index({ unsplashId: 1 }, { sparse: true });
 PhotoSchema.index({ tags: 1 });
 PhotoSchema.index({ user: 1 });
 PhotoSchema.index({ sourceType: 1 });

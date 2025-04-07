@@ -163,6 +163,46 @@ exports.getPopularPhotos = async (req, res, next) => {
   }
 };
 
+//helper
+const fetchFromUnsplash = async (id) => {
+  try {
+    // First check if the ID looks like a valid Unsplash ID (format validation)
+    if (!/^[a-zA-Z0-9-_]+$/.test(id)) {
+      throw new ErrorResponse("Invalid Unsplash photo ID format", 400);
+    }
+
+    const response = await axios.get(`https://api.unsplash.com/photos/${id}`, {
+      headers: {
+        Authorization: `Client-ID ${process.env.UNSPLASH_ACCESS_KEY}`,
+        "Accept-Version": "v1",
+      },
+      timeout: 5000,
+    });
+
+    if (!response.data) {
+      throw new ErrorResponse("Empty response from Unsplash", 502);
+    }
+
+    return response.data;
+  } catch (error) {
+    // Handle axios errors
+    if (error.response) {
+      if (error.response.status === 404) {
+        throw new ErrorResponse("Photo not found on Unsplash", 404);
+      }
+      if (error.response.status === 403) {
+        throw new ErrorResponse("Unsplash API rate limit exceeded", 429);
+      }
+    }
+    // Handle our custom ErrorResponse
+    if (error instanceof ErrorResponse) {
+      throw error;
+    }
+    // Fallback for other errors
+    throw new ErrorResponse("Error contacting Unsplash API", 502);
+  }
+};
+
 exports.getPhotoById = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -171,7 +211,7 @@ exports.getPhotoById = async (req, res, next) => {
       return next(new ErrorResponse("Photo ID is required", 400));
     }
 
-    // First try to find by MongoDB ID
+    // Check MongoDB ID first
     if (id.match(/^[0-9a-fA-F]{24}$/)) {
       const photo = await Photo.findById(id)
         .populate("likes", "username avatar")
@@ -185,51 +225,27 @@ exports.getPhotoById = async (req, res, next) => {
       }
     }
 
-    // If not found by MongoDB ID, try by unsplashId
+    // Check by unsplashId
     let photo = await Photo.findOne({ unsplashId: id })
       .populate("likes", "username avatar")
       .populate("saves", "username avatar");
 
-    // If still not found, fetch from Unsplash
+    // Fetch from Unsplash if not found
     if (!photo) {
-      try {
-        const response = await axios.get(
-          `https://api.unsplash.com/photos/${id}`,
-          {
-            headers: {
-              Authorization: `Client-ID ${process.env.UNSPLASH_ACCESS_KEY}`,
-            },
-          }
-        );
+      const unsplashPhoto = await fetchFromUnsplash(id);
 
-        const unsplashPhoto = response.data;
-
-        // Create and save the new photo
-        photo = await Photo.create({
-          unsplashId: unsplashPhoto.id,
-          imageUrl: unsplashPhoto.urls.regular,
-          thumbUrl: unsplashPhoto.urls.thumb,
-          photographer: unsplashPhoto.user.name,
-          photographerUrl: unsplashPhoto.user.links.html,
-          description:
-            unsplashPhoto.description || unsplashPhoto.alt_description,
-          tags: unsplashPhoto.tags
-            ? unsplashPhoto.tags.map((tag) => tag.title)
-            : [],
-        });
-
-        return res.status(200).json({
-          success: true,
-          data: photo,
-        });
-      } catch (unsplashError) {
-        if (unsplashError.response?.status === 404) {
-          return next(
-            new ErrorResponse(`Resource not found with id of ${id}`, 404)
-          );
-        }
-        return next(new ErrorResponse("Unsplash API error", 502));
-      }
+      photo = await Photo.create({
+        unsplashId: unsplashPhoto.id,
+        imageUrl: unsplashPhoto.urls.regular,
+        thumbUrl: unsplashPhoto.urls.thumb,
+        photographer: unsplashPhoto.user.name,
+        photographerUrl: unsplashPhoto.user.links.html,
+        description: unsplashPhoto.description || unsplashPhoto.alt_description,
+        tags: unsplashPhoto.tags?.map((tag) => tag.title) || [],
+        width: unsplashPhoto.width,
+        height: unsplashPhoto.height,
+        color: unsplashPhoto.color,
+      });
     }
 
     res.status(200).json({
