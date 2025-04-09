@@ -14,8 +14,15 @@ const PhotoSchema = new mongoose.Schema(
       required: function () {
         return this.sourceType === "unsplash";
       },
-      // unique: true,
-      sparse: true, // Allows null values but enforces uniqueness for non-null
+      sparse: true,
+    },
+    slug: {
+      // New field
+      type: String,
+      required: function () {
+        return this.sourceType === "unsplash";
+      },
+      sparse: true,
     },
 
     // Image URLs
@@ -28,6 +35,14 @@ const PhotoSchema = new mongoose.Schema(
       required: function () {
         return this.sourceType === "unsplash";
       },
+    },
+    downloadUrl: {
+      // New field
+      type: String,
+      required: function () {
+        return this.sourceType === "unsplash";
+      },
+      sparse: true,
     },
 
     // Photographer information
@@ -42,6 +57,14 @@ const PhotoSchema = new mongoose.Schema(
       required: function () {
         return this.sourceType === "unsplash";
       },
+    },
+    photographerImage: {
+      // New field
+      type: String,
+      required: function () {
+        return this.sourceType === "unsplash";
+      },
+      sparse: true,
     },
 
     // User information
@@ -77,6 +100,17 @@ const PhotoSchema = new mongoose.Schema(
       index: true,
     },
 
+    // Image metadata
+    width: {
+      type: Number,
+    },
+    height: {
+      type: Number,
+    },
+    color: {
+      type: String,
+    },
+
     // Timestamps
     createdAt: {
       type: Date,
@@ -106,6 +140,7 @@ PhotoSchema.virtual("saveCount").get(function () {
 
 // Indexes for performance
 PhotoSchema.index({ unsplashId: 1 }, { sparse: true });
+PhotoSchema.index({ slug: 1 }, { sparse: true }); // New index
 PhotoSchema.index({ tags: 1 });
 PhotoSchema.index({ user: 1 });
 PhotoSchema.index({ sourceType: 1 });
@@ -113,7 +148,7 @@ PhotoSchema.index({ sourceType: 1 });
 // Middleware to update thumbUrl for user uploads if not provided
 PhotoSchema.pre("save", function (next) {
   if (this.sourceType === "user_upload" && !this.thumbUrl) {
-    this.thumbUrl = this.imageUrl; // Use main image as thumb if not provided
+    this.thumbUrl = this.imageUrl;
   }
   next();
 });

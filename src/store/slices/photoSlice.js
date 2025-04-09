@@ -73,12 +73,11 @@ export const unlikePhoto = createAsyncThunk(
 const initialState = {
   photos: [],
   currentPhoto: {
-    // Changed from 'photo' to 'currentPhoto' for consistency
     photo: null,
     status: "idle",
     error: null,
   },
-  status: "idle", // This is for general photo operations
+  status: "idle",
   error: null,
   currentQuery: "",
 };
@@ -106,7 +105,8 @@ const photoSlice = createSlice({
       })
       .addCase(searchPhotos.fulfilled, (state, action) => {
         state.status = "succeeded";
-        state.photos = action.payload.data;
+        // Check if the response has data property that contains the array
+        state.photos = action.payload.data || [];
         state.currentQuery = action.meta.arg.query;
       })
       .addCase(searchPhotos.rejected, (state, action) => {
@@ -119,22 +119,29 @@ const photoSlice = createSlice({
         state.status = "loading";
         state.error = null;
       })
-      .addCase(uploadPhoto.fulfilled, (state) => {
+      .addCase(uploadPhoto.fulfilled, (state, action) => {
         state.status = "succeeded";
+        // If the upload returns a photo, we can add it to our photos array
+        if (action.payload.success && action.payload.data) {
+          state.photos = [action.payload.data, ...state.photos];
+        }
       })
       .addCase(uploadPhoto.rejected, (state, action) => {
         state.status = "failed";
         state.error = action.payload;
       })
 
-      // Fetch photo by ID reducers (only one set!)
+      // Fetch photo by ID reducers
       .addCase(fetchPhotoById.pending, (state) => {
         state.currentPhoto.status = "loading";
         state.currentPhoto.error = null;
       })
       .addCase(fetchPhotoById.fulfilled, (state, action) => {
         state.currentPhoto.status = "succeeded";
-        state.currentPhoto.photo = action.payload; // This should be { data: {...} }
+        // Store the photo data from the success response
+        state.currentPhoto.photo = action.payload.success
+          ? action.payload.data
+          : null;
         state.currentPhoto.error = null;
       })
       .addCase(fetchPhotoById.rejected, (state, action) => {
@@ -145,33 +152,47 @@ const photoSlice = createSlice({
 
       // Like photo reducers
       .addCase(likePhoto.fulfilled, (state, action) => {
-        if (
-          state.currentPhoto.photo &&
-          state.currentPhoto.photo._id === action.payload._id
-        ) {
-          state.currentPhoto.photo = action.payload;
-        }
-        const photoIndex = state.photos.findIndex(
-          (p) => p._id === action.payload._id
-        );
-        if (photoIndex !== -1) {
-          state.photos[photoIndex] = action.payload;
+        if (action.payload.success && action.payload.data) {
+          const updatedPhoto = action.payload.data;
+
+          // Update currentPhoto if it's the same photo
+          if (
+            state.currentPhoto.photo &&
+            state.currentPhoto.photo._id === updatedPhoto._id
+          ) {
+            state.currentPhoto.photo = updatedPhoto;
+          }
+
+          // Update the photo in the photos array
+          const photoIndex = state.photos.findIndex(
+            (p) => p._id === updatedPhoto._id
+          );
+          if (photoIndex !== -1) {
+            state.photos[photoIndex] = updatedPhoto;
+          }
         }
       })
 
       // Unlike photo reducers
       .addCase(unlikePhoto.fulfilled, (state, action) => {
-        if (
-          state.currentPhoto.photo &&
-          state.currentPhoto.photo._id === action.payload._id
-        ) {
-          state.currentPhoto.photo = action.payload;
-        }
-        const photoIndex = state.photos.findIndex(
-          (p) => p._id === action.payload._id
-        );
-        if (photoIndex !== -1) {
-          state.photos[photoIndex] = action.payload;
+        if (action.payload.success && action.payload.data) {
+          const updatedPhoto = action.payload.data;
+
+          // Update currentPhoto if it's the same photo
+          if (
+            state.currentPhoto.photo &&
+            state.currentPhoto.photo._id === updatedPhoto._id
+          ) {
+            state.currentPhoto.photo = updatedPhoto;
+          }
+
+          // Update the photo in the photos array
+          const photoIndex = state.photos.findIndex(
+            (p) => p._id === updatedPhoto._id
+          );
+          if (photoIndex !== -1) {
+            state.photos[photoIndex] = updatedPhoto;
+          }
         }
       });
   },
