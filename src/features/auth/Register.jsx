@@ -50,7 +50,7 @@ const Register = () => {
           </p>
         </div>
 
-        {error && (
+        {/* {error && (
           <div className="bg-red-50 border-l-4 border-red-500 p-4">
             <div className="flex">
               <div className="flex-shrink-0">
@@ -72,7 +72,7 @@ const Register = () => {
               </div>
             </div>
           </div>
-        )}
+        )} */}
 
         <form className="mt-8 space-y-6" onSubmit={formik.handleSubmit}>
           <div className="rounded-md shadow-sm space-y-4">

@@ -5,6 +5,7 @@ import boardReducer from "./slices/boardSlice";
 import userReducer from "./slices/userSlice";
 import commentReducer from "./slices/commentSlice";
 import dashboardReducer from "./slices/dashboardslice";
+import activityReducer from "./slices/activitySlice";
 
 export const store = configureStore({
   reducer: {
@@ -14,5 +15,6 @@ export const store = configureStore({
     boards: boardReducer,
     user: userReducer,
     comments: commentReducer,
+    activity: activityReducer,
   },
 });

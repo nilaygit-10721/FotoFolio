@@ -2,9 +2,11 @@ import React, { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { fetchUserStats } from "../store/slices/dashboardslice";
+import { getMyActivity } from "../store/slices/activitySlice";
 import PhotoGrid from "../components/ui/PhotoGrid";
 import Loader from "../components/ui/Loader";
 import EmptyState from "../components/ui/EmptyState";
+import TimeAgo from "react-timeago";
 
 const Dashboard = () => {
   const dispatch = useDispatch();
@@ -14,20 +16,24 @@ const Dashboard = () => {
       boardsCount: 0,
       photosCount: 0,
       followersCount: 0,
-      recentActivity: [],
     },
     recentPhotos = [],
     loading,
     error,
   } = useSelector((state) => state.dashboard);
 
+  // Get activities from the activity slice
+  const { myActivity } = useSelector((state) => state.activity);
+  const { items: activities, status: activityStatus } = myActivity;
+
   useEffect(() => {
     if (user?._id) {
       dispatch(fetchUserStats(user._id));
+      dispatch(getMyActivity()); // Fetch activities
     }
   }, [dispatch, user?._id]);
 
-  if (loading) {
+  if (loading || activityStatus === "loading") {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <Loader size="lg" />
@@ -50,6 +56,25 @@ const Dashboard = () => {
       </div>
     );
   }
+
+  // Activity message generator
+  const getActivityMessage = (activity) => {
+    switch (activity.type) {
+      case "create_board":
+        return (
+          <>
+            You created board{" "}
+            <span className="font-semibold">{activity.board?.title}</span>
+          </>
+        );
+      case "like":
+        return "You liked a photo";
+      case "upload":
+        return "You uploaded a photo";
+      default:
+        return `You performed an action: ${activity.type}`;
+    }
+  };
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -188,56 +213,68 @@ const Dashboard = () => {
         </div>
 
         {/* Recent Activity Section */}
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow mt-8">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-bold text-gray-900">Recent Activity</h2>
             <Link
               to="/activity"
               className="text-blue-600 hover:text-blue-500 text-sm"
             >
-              View all
+              View all activity
             </Link>
           </div>
-          {stats?.recentActivity?.length > 0 ? (
-            <div className="space-y-4">
-              {stats.recentActivity.slice(0, 3).map((activity) => (
-                <div
-                  key={activity._id}
-                  className="border-b border-gray-200 pb-4 last:border-0"
-                >
+
+          {activities?.length > 0 ? (
+            <div className="divide-y divide-gray-200">
+              {activities.slice(0, 5).map((activity) => (
+                <div key={activity._id} className="py-4 first:pt-0 last:pb-0">
                   <div className="flex items-start">
-                    <div className="flex-shrink-0 h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center overflow-hidden">
-                      {activity.user?.avatar ? (
-                        <img
-                          src={activity.user.avatar}
-                          alt={activity.user.username}
-                          className="h-full w-full object-cover"
-                        />
+                    <div className="flex-shrink-0 h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center">
+                      {activity.type === "create_board" ? (
+                        <svg
+                          className="h-5 w-5 text-gray-500"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2"
+                          />
+                        </svg>
                       ) : (
-                        <span className="text-gray-600">
-                          {activity.user?.username?.charAt(0).toUpperCase()}
-                        </span>
+                        <svg
+                          className="h-5 w-5 text-gray-500"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                          />
+                        </svg>
                       )}
                     </div>
-                    <div className="ml-3">
-                      <p className="text-sm font-medium text-gray-900">
-                        {activity.type === "like" && (
-                          <span>{activity.user.username} liked your photo</span>
-                        )}
-                        {activity.type === "comment" && (
-                          <span>
-                            {activity.user.username} commented on your photo
-                          </span>
-                        )}
-                        {activity.type === "follow" && (
-                          <span>
-                            {activity.user.username} started following you
-                          </span>
-                        )}
+                    <div className="ml-3 flex-1 min-w-0">
+                      <p className="text-sm text-gray-800">
+                        {getActivityMessage(activity)}
                       </p>
-                      <p className="text-sm text-gray-500">
-                        {new Date(activity.createdAt).toLocaleString()}
+                      <p className="text-xs text-gray-500 mt-1">
+                        <TimeAgo date={activity.createdAt} />
                       </p>
+                      {activity.board && (
+                        <Link
+                          to={`/boards/${activity.board._id}`}
+                          className="mt-2 inline-block text-xs px-2 py-1 bg-gray-100 rounded hover:bg-gray-200"
+                        >
+                          View Board
+                        </Link>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -245,9 +282,9 @@ const Dashboard = () => {
             </div>
           ) : (
             <EmptyState
-              message="No recent activity"
-              actionText="Explore Photos"
-              actionLink="/explore"
+              message="No recent activity yet"
+              actionText="Upload your first photo"
+              actionLink="/upload"
             />
           )}
         </div>

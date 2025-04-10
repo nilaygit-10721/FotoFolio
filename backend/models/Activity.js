@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 const ActivitySchema = new mongoose.Schema({
   user: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
+    ref: "user_foto",
     required: true,
   },
   type: {
@@ -21,7 +21,7 @@ const ActivitySchema = new mongoose.Schema({
   },
   targetUser: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
+    ref: "user_foto",
   },
   createdAt: {
     type: Date,
